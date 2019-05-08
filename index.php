@@ -143,7 +143,6 @@ class Index{
             $db = new DB();
             $link = $db->connect();
             $sql="update usermanage set head_url = '{$filename}' where id='{$post['id']}'";
-            print_r($sql);
             $db->update($link,$sql);
 
           } catch (Exception $e) {
@@ -157,15 +156,74 @@ class Index{
     }
     //查看所有图像
     public function showUploadPic(){
-
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select * from imageManage where user_id='{$post['id']}'";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if($rows){
+            $data['data'] = $rows;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '该账号不存在！';
+        }
+        echo $db->encodeJson($data);
     }
     //上传图像
     public function uploadPic(){
+        try {
+            $post = $_POST;
+            //方式一：电脑上传文件
+            $image = $_FILES["file"]["tmp_name"];
+            $fp = fopen($image, "r");
+            $file = fread($fp, $_FILES["file"]["size"]); //二进制数据流
+            //保存地址
+            $imgDir = './img/image/';
+            //要生成的图片名字
+            if(!file_exists($imgDir)){
+                //检查是否有该文件夹，如果没有就创建，并给予最高权限
+                mkdir($imgDir, 0700);
+            }
+            $filename = date("Ym").md5(time().mt_rand(10, 99)); //新图片名称
+            $url = $filename.".jpg";
+            $newFilePath = $imgDir.$filename.".jpg";
+            $data = $file;
+            $newFile = fopen($newFilePath,"w"); //打开文件准备写入
+            fwrite($newFile,$data); //写入二进制流到文件
+            fclose($newFile); //关闭文件
+            $db = new DB();
+            $time = date("Y-m-d H:i:s");
+            $link = $db->connect();
+            $sql="insert into imagemanage(user_id,img_name,url,time) values('".$post['id']."','".$filename."','".$url."','".$time."')";
+            print_r($sql);
+            $rows = $db->insert($link,$sql);
+            if($rows){
+                $data['errcode'] = 0;
+            }else{
+                $data['errcode'] = '上传失败';
+            }
+            echo $db->encodeJson($data);
 
+
+          } catch (Exception $e) {
+            echo json_encode($e);
+          }
     }
     //删除图像
     public function delOnepic(){
-
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="delete from imageManage where id='{$post['id']}'";
+        $rows = $db->delete($link,$sql);
+        $data = array();
+        if($rows){
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '删除失败';
+        }
+        echo $db->encodeJson($data);
     }
     //查询所有标注
     public function showAllMark(){

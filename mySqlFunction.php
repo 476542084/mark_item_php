@@ -48,6 +48,21 @@ class DB
             return false;
         }
     }
+
+    /** 
+     * 删除一条记录 
+     * @param string $sql 
+     * @param obj $link
+     * @return string 
+     */
+    function delete($link, $sql)
+    {
+        if (mysqli_query($link, $sql)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
  
     /** 
      * 查询一条记录 
