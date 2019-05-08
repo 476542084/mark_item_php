@@ -43,9 +43,9 @@ class DB
     function update($link, $sql)
     {
         if (mysqli_query($link, $sql)) {
-            echo "更新数据成功";
+            return true;
         } else {
-            echo "Error update data: " . $link->error;
+            return false;
         }
     }
  
