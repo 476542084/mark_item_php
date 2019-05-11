@@ -60,6 +60,9 @@ class Index{
             $password = md5($password);
             if($password == $rows['hash']){
                 $data['errcode'] = 0;
+                $data['id'] = $rows['id'];
+                $data['userName'] = $rows['user_name'];
+                $data['head_url'] = $rows['head_url'];
             }else{
                 $data['errcode'] = '密码错误';
             }
@@ -166,7 +169,7 @@ class Index{
             $data['data'] = $rows;
             $data['errcode'] = 0;
         }else{
-            $data['errcode'] = '该账号不存在！';
+            $data['errcode'] = '暂未上传图像';
         }
         echo $db->encodeJson($data);
     }
@@ -227,27 +230,198 @@ class Index{
     }
     //查询所有标注
     public function showAllMark(){
-
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select * from markmanage where img_id='{$post['img_id']}'";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if($rows){
+            $data['data'] = $rows;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '暂未存在标注';
+        }
+        echo $db->encodeJson($data);
+    }
+    //查询已经标注图像
+    public function showHadMarkImage(){
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select * from imagemanage where user_id='{$post['id']}'";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if(!$rows){
+            $data['errcode'] = '暂无图像';
+            echo $db->encodeJson($data);
+            return false;
+        }
+        for($i = 0;$i<count($rows);$i++){
+            $sql="select count(*) from markmanage where img_id='{$rows[$i]['id']}'";
+            $nums = $db->fetchOne($sql,$link);
+            $rows[$i]['nums'] = $nums['count(*)'];
+            if($nums['count(*)'] == 0){
+                unset($rows[$i]);
+            }
+        }
+        if(!$rows){
+            $data['errcode'] = '暂无已标注图像';
+            echo $db->encodeJson($data);
+            return false;
+        }
+        $data['errcode'] = 0;
+        $data['data'] = $rows;
+        echo $db->encodeJson($data);
     }
     //新添标注
     public function addOneMark(){
-
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $time = date("Y-m-d H:i:s");
+        $data = json_decode($post['data'],true);
+        $response = array();
+        for($i=0;$i<count($data);$i++){
+            $mapData = json_encode($data[$i]);
+            $sql="insert into markmanage(user_id,img_id,mapdata,time) values('".$post['userId']."','".$post['img_id']."','".$mapData."','".$time."')";
+            $rows = $db->insert($link,$sql);
+            if(!$rows){
+                $response['errcode'] = '新添失败';
+                echo $db->encodeJson($data);
+                return false;
+            }
+        }
+        $response['errcode'] = 0;
+        echo $db->encodeJson($response);
     }
     //修改标注
     public function editOneMark(){
-
+        $post = $_POST;
+        $data = json_decode($post['data'],true);
+        $db = new DB();
+        $link = $db->connect();
+        $time = date("Y-m-d H:i:s");
+        $data = json_decode($post['data'],true);
+        $response = array();
+        for($i=0;$i<count($data);$i++){
+            $markId = $data[$i]['mark_id'];
+            unset($data[$i]['mark_id']);
+            $mapData = json_encode($data[$i]);
+            $sql="update markmanage set mapdata ='".$mapData."',time ='".$time."',user_id ='".$post['userId']."' where id ='".$markId."'";
+            $rows = $db->update($link,$sql);
+            if(!$rows){
+                $response['errcode'] = '修改失败';
+                echo $db->encodeJson($response);
+                return false;
+            }
+        }
+        $response['errcode'] = 0;
+        echo $db->encodeJson($response);
     }
     //删除标注
     public function delOneMark(){
-
+        $post = $_POST;
+        $data = json_decode($post['data'],true);
+        $db = new DB();
+        $link = $db->connect();
+        $data = json_decode($post['data'],true);
+        $response = array();
+        for($i=0;$i<count($data);$i++){
+            $markId = $data[$i]['mark_id'];
+            $sql="delete from markmanage where id ='".$markId."'";
+            $rows = $db->update($link,$sql);
+            if(!$rows){
+                $response['errcode'] = '删除失败';
+                echo $db->encodeJson($response);
+                return false;
+            }
+        }
+        $response['errcode'] = 0;
+        echo $db->encodeJson($response);
     }
     //查询某标注所有留言
     public function showAllMessageByMark(){
-   
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select a.user_name,a.head_url,b.content,b.time,b.user_id from usermanage as a,chatManage as b  where a.id=b.user_id and b.mark_id='{$post['markId']}'";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if($rows){
+            $data['data'] = $rows;
+            $data['errcode'] = 0;
+        }else{
+            // $data['errcode'] = '暂无留言';
+            $data['errcode'] = 0;
+            echo $db->encodeJson($data);
+            return true;
+        }
+        $sql="select distinct  a.user_name,a.head_url from usermanage as a,chatManage as b  where a.id=b.user_id and b.mark_id='{$post['markId']}'";
+        $rowss = $db->fetchAll($sql,$link);
+        if($rowss){
+            $data['user'] = $rowss;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '查看失败';
+            echo $db->encodeJson($data);
+            return false;
+        }
+        echo $db->encodeJson($data);
     }
     //新添留言
     public function addOneMessageByMark(){
-   
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $time = date("Y-m-d H:i:s");
+        $response = array();
+        $sql="insert into chatmanage(mark_id,user_id,content,time) values('".$post['mark_id']."','".$post['user_id']."','".$post['content']."','".$time."')";
+        $row = $db->insert($link,$sql);
+        if($row){
+            $response['errcode'] = 0;
+        }else{
+            $response['errcode'] = '发送失败';
+        }
+        echo $db->encodeJson($response);
+    }
+    //查看好友分享的图像
+    public function showFriendsShare(){
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $response = array();
+        $sql="select * from usermanage where id='{$post['id']}'";
+        $rows = $db->fetchOne($sql,$link);
+        // echo $rows;
+        // die();
+        if(!$rows){
+            $response['errcode'] = '暂无好友';
+            echo $db->encodeJson($response);
+            return false;
+        }
+        $data = array();
+        $friendList = explode(",",$rows['friends']);
+        // print_r($friendList);
+        // die();
+        
+        $imgList=[];
+        for($i = 0; $i<count($friendList);$i++){
+            $sqlUserName = "select user_name from usermanage where id='{$friendList[$i]}'";
+            $userName = $db->fetchOne($sqlUserName,$link);
+            $sql="select * from imagemanage where user_id='{$friendList[$i]}'";
+            $test = $db->fetchAll($sql,$link,$userName['user_name']);
+            array_push($imgList,$test);
+        }
+        if($imgList){
+            $response['errcode'] = 0;
+            $response['data'] = $imgList;
+        }else{
+            $response['errcode'] = '你的好友暂无上传的图像';
+            echo $db->encodeJson($response);
+            return false;
+        }
+        echo $db->encodeJson($response);
     }
     //查看所有好友
     public function showAllFriends(){
@@ -283,12 +457,29 @@ class Index{
             if($v == $post['firendID']){
               unset($friendsList[$k]);
             }
-          }
+        }
+        $data = array();
+
+        $sql="select * from usermanage where id='{$post['firendID']}'";
+        $rows = $db->fetchOne($sql,$link);
+        $friendsListNew = explode(",",$rows['friends']);
+        foreach($friendsListNew as $k=>$v){
+            if($v == $post['id']){
+              unset($friendsListNew[$k]);
+            }
+        }
+        $arrListNew = '';
+        if($friendsListNew){
+            $arrListNew = implode(",", $friendsListNew);
+        }
+        $sql="update usermanage set friends = '{$arrListNew}' where id='{$post['firendID']}'";
+        $db->update($link,$sql);
+
+
         $arrList = '';
         if($friendsList){
             $arrList = implode(",", $friendsList);
         }
-        $data = array();
         $sql="update usermanage set friends = '{$arrList}' where id='{$post['id']}'";
         $rows = $db->update($link,$sql);
         if($rows){
@@ -319,10 +510,28 @@ class Index{
         $friendsList = explode(",",$rows['friends']);
         foreach($friendsList as $k=>$v){
             if($v == $new_id){
-                $data['errcode'] = "已经是好友";
+                $data['errcode'] = "他已经是你好友";
                 echo $db->encodeJson($data);
                 return false;
             }
+        }
+        //好友列表添加自己
+        $sql="select * from usermanage where id='{$new_id}'";
+        $rowNew = $db->fetchOne($sql,$link);
+        $friendsListNew = explode(",",$rowNew['friends']);
+        foreach($friendsListNew as $k=>$v){
+            if($v == $post['id']){
+                $data['errcode'] = "你已经是他好友";
+                echo $db->encodeJson($data);
+                return false;
+            }
+        }
+        if($friendsListNew[0] == ''){
+            $arrListNew = $post['id'];
+        }else{
+            array_push($friendsListNew,$post['id']);
+            $arrListNew = '';
+            $arrListNew = implode(",", $friendsListNew);
         }
         if($friendsList[0] == ''){
             $arrList = $new_id;
@@ -333,6 +542,10 @@ class Index{
         }
         $sql="update usermanage set friends = '{$arrList}' where id='{$post['id']}'";
         $rows = $db->update($link,$sql);
+
+        $sql="update usermanage set friends = '{$arrListNew}' where id='{$new_id}'";
+        $db->update($link,$sql);
+
         if($rows){
             $data['errcode'] = 0;
         }else{

@@ -11,7 +11,7 @@ class DB
     function connect()
     {   
         //连接mysql  
-        $link = mysqli_connect(DB_HOST, DB_USER, DB_PWD) or die('数据库连接失败<br/>ERROR ' . mysqli_error() . ':' . mysqli_error());  
+        $link = mysqli_connect(DB_HOST, DB_USER, DB_PWD) or die('数据库连接失败<br/>ERROR ' . mysqli_error('error') . ':' . mysqli_error('error'));  
         //设置字符集  
         mysqli_set_charset($link, DB_CHARSET);  
         //打开指定的数据库  
@@ -88,11 +88,17 @@ class DB
      * @param obj $link 
      * @return array|boolean
      */
-    function fetchAll($sql, $link, $result_type = MYSQLI_ASSOC)
+    function fetchAll($sql, $link, $flag = null,$result_type = MYSQLI_ASSOC)
     {
         $result = mysqli_query($link, $sql);
+        // if(!is_null($flag)){
+        //     $result['user_name'] = $flag;
+        // }
         if ($result && mysqli_num_rows($result) > 0) {
             while ($row = mysqli_fetch_array($result, $result_type)) {
+                if(!is_null($flag)){
+                    $row['user_name'] = $flag;
+                }
                 $rows[] = $row;
             }
             return $rows;
