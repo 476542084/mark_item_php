@@ -15,27 +15,97 @@ class Index{
         }
        
     }
+    //查看所有用户
+    public function showAllUser(){
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select user_name,id from userManage";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if($rows){
+            $data['data'] = $rows;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '查询所有用户信息失败';
+        }
+        echo $db->encodeJson($data);
+    }
+    //查看所有用户(管理员)
+    public function showAllUserSurper(){
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="select user_name,id,type,time,head_url from userManage where id != '".$post['id']."'";
+        $rows = $db->fetchAll($sql,$link);
+        $data = array();
+        if($rows){
+            $data['data'] = $rows;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '查询所有用户信息失败';
+        }
+        echo $db->encodeJson($data);
+    }
+    //删除某个用户(管理员)
+    public function delOneUser(){
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="delete from usermanage where id='{$post['userId']}'";
+        $rows = $db->delete($link,$sql);
+        $data = array();
+        if($rows){
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '删除失败';
+        }
+        echo $db->encodeJson($data);
+    }
+    //更新用户权限
+    public function savaUserPower(){
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
+        $sql="update usermanage set type='{$post['userType']}' where id='{$post['userId']}'";
+        $rows = $db->update($link,$sql);
+        $data = array();
+        if($rows){
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '修改失败';
+        }
+        echo $db->encodeJson($data);
+    }
     //注册
     public function logon(){
         $post = $_POST;
         $db = new DB();
         $link = $db->connect();
-        $sql="select * from usermanage where user_name='{$post['userName']}'";
+        $sql="select * from usermanage where user_name='{$post['account']}'";
         $rows = $db->fetchOne($sql,$link);
         $data = array();
         if($rows){
             $data['errcode'] = '账号已存在';
+            echo $db->encodeJson($data);
+            return true;
+        }
+        $sql="select * from usermanage where user_name='{$post['userName']}'";
+        $rows = $db->fetchOne($sql,$link);
+        if($rows){
+            $data['errcode'] = '用户名已存在';
+            echo $db->encodeJson($data);
+            return true;
         }else{
             $salt = md5(mcrypt_create_iv(32));
             $password = $post['password'].$salt;
             $hash = md5($password);
             //默认普通权限
-            // 1 普通 2超级管理员
+            // 111111 普通 777777超级管理员
             $head_url = '476542084.jpg';
             $time = date("Y-m-d H:i:s");
-            $type = 1;
+            $type = '111111';
             $friend = '';
-            $sql="insert into usermanage(user_name,salt,hash,head_url,type,friends,time) values('".$post['userName']."','".$salt."','".$hash."','".$head_url."','".$type."','".$friend."','".$time."')";
+            $sql="insert into usermanage(account,user_name,salt,hash,head_url,type,friends,time) values('".$post['account']."','".$post['userName']."','".$salt."','".$hash."','".$head_url."','".$type."','".$friend."','".$time."')";
             $link = $db->connect();
             $rows = $db->insert($link,$sql);
             if($rows){
@@ -51,7 +121,7 @@ class Index{
         $post = $_POST;
         $db = new DB();
         $link = $db->connect();
-        $sql="select * from usermanage where user_name='{$post['userName']}'";
+        $sql="select * from usermanage where account='{$post['account']}'";
         $rows = $db->fetchOne($sql,$link);
         $data = array();
         if($rows){
@@ -63,6 +133,7 @@ class Index{
                 $data['id'] = $rows['id'];
                 $data['userName'] = $rows['user_name'];
                 $data['head_url'] = $rows['head_url'];
+                $data['type'] = $rows['type'];
             }else{
                 $data['errcode'] = '密码错误';
             }
@@ -155,7 +226,55 @@ class Index{
 
     //查看消息
     public function showAllMessage(){
+        //
+        $post = $_POST;
+        $db = new DB();
+        $link = $db->connect();
 
+        $sql="select * from imagemanage where user_id='{$post['id']}'";
+        $rows = $db->fetchAll($sql,$link);
+        // print_r($rows);
+        $markList = [];
+        for($i = 0; $i<count($rows);$i++){
+            $sql="select * from markmanage where img_id='{$rows[$i]['id']}' and user_id !='{$post['id']}'";
+        // print_r($sql);
+
+            $test = $db->fetchAll($sql,$link);
+            $markList[$i] = $test;
+            if($markList[$i]== ''){
+                unset($markList[$i]);
+            }
+        }
+        //别人添加了新的标签
+        $markList = array_values($markList);
+        
+        $sql="select * from markmanage where user_id='{$post['id']}'";
+        $rows = $db->fetchAll($sql,$link);
+
+        $chatList = [];
+        for($i = 0; $i<count($rows);$i++){
+            $sql="select * from chatmanage where mark_id='{$rows[$i]['id']}' and user_id !='{$post['id']}'";
+        // print_r($sql);
+
+            $test = $db->fetchAll($sql,$link);
+            $chatList[$i] = $test;
+            if($chatList[$i]== ''){
+                unset($chatList[$i]);
+            }
+        }
+        //别人回复了自己的标签
+
+        $chatList = array_values($chatList);
+
+        $data = array();
+        if($chatList ||$markList){
+            $data['chatList'] = $chatList;
+            $data['markList'] = $markList;
+            $data['errcode'] = 0;
+        }else{
+            $data['errcode'] = '暂无消息';
+        }
+        echo $db->encodeJson($data);
     }
     //查看所有图像
     public function showUploadPic(){
